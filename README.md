@@ -1,105 +1,72 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# Guideline-based agent
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+This is a prototype of a conversational agent that modifies its behavior dynamically based on the conversation history and the guidelines stored in the database.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+## About the project
 
-## Features
+### Tech Stack
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Middleware
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- Next.js
+- Supabase
+- OpenAI (for LLM)
+- Tailwind CSS
+- Radix UI
 
-## Demo
+### How it works
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+Agent uses guidelines to guide its behavior by dynamically selecting the most relevant guidelines based on the conversation history and modifying the system prompt accordingly.
 
-## Deploy to Vercel
+Guidelines can be added globally or conditionally. Global guidelines are applied to all conversations, while conditional guidelines are applied only when the current conversation state matches the condition. Condition guidelines will be applied only once per conversation, unless the condition is met again for a new reason.
 
-Vercel deployment will guide you through creating a Supabase account and project.
+#### Conditional guideline selection process
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+1. When a new conditional guideline is added, the agent creates an embedding for the guideline and stores it in the database.
+2. When a new message is received, the agent creates an embedding for the entire conversation history and then searches for the most relevant guidelines in the database using semantic search returning top-k (k=5 by default) most relevant guidelines based on cosine similarity.
+3. The agent then calls LLM to filter out guidelines that are not relevant to the current conversation providing the conversation history and the top-k most relevant guidelines.
+4. The agent modifies the system prompt to include the selected guidelines from the previous step and calls the LLM to generate a response for the user.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+#### Things to improve and add
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+- Preprocess guidelines (using LLM?) before storing them in the database
+- Include current context into the system prompt so that conditional guidelines can use it (e.g. today's date, user registration date, user plan, etc.)
+- Potentially add tags/properties to guidelines that can be used to filter them out based on some criteria before performing semantic search (e.g. tags: "user_plan:pro", "user_plan:free", etc.)
+- Extend conditional guidelines by adding an option to call tools based on condition
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+## Setting up and running the project
 
-## Clone and run locally
+### 1. Prerequisites
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+- Node.js 20+
+- Docker (for running supabase locally)
+- OpenAI API key
 
-2. Create a Next.js app using the Supabase Starter template npx command
+### 2. Running supabase locally
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+_This can be skipped if you're using a remote Supabase project._
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+Install and run supabase locally:
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+```bash
+yarn add -D supabase
+yarn supabase start
+```
 
-3. Use `cd` to change into the app's directory
+### 3. Environment Variables
 
-   ```bash
-   cd with-supabase-app
-   ```
+Copy `.env.example` to `.env.local` and fill in the values:
 
-4. Rename `.env.example` to `.env.local` and update the following:
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 # Or your remote supabase project url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+OPENAI_API_KEY=your_openai_api_key
+```
 
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=[INSERT SUPABASE PROJECT API ANON KEY]
-   ```
+If you're running supabase locally, you can obtain the supabase anon key from the console when you run `supabase start`.
 
-   Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+### 4. Running the project
 
-5. You can now run the Next.js local development server:
+```bash
+yarn dev
+```
 
-   ```bash
-   npm run dev
-   ```
-
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
-
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
-
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
-
-## Feedback and issues
-
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
-
-## More Supabase examples
-
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+Open your browser and go to http://localhost:3000
